@@ -22,9 +22,15 @@ jobs:
       - run: node scripts/collect.mjs
       - name: Commit if changed
         run: |
-          git add data
-          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git config user.name "attendance-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then
+            # GitHub pauses scheduled workflows after 60 days without commits (e.g. summer break).
+            if [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -gt $(( 30 * 86400 )) ]; then
+              git commit --allow-empty -m "Keepalive" && git push
+            fi
+            echo "No changes"; exit 0
+          fi
           git commit -m "Attendance $(ls data/days | tail -1 | sed 's/.csv//') — $(date -u +%FT%TZ)"
           git push
