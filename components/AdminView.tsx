@@ -12,6 +12,8 @@ const et = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const day = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric", year: "numeric" });
+const shortDay = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
 
 type Filter = "all" | "ns" | "new" | "missing" | "big";
 const FILTERS: [Filter, string][] = [
@@ -22,7 +24,7 @@ const FILTERS: [Filter, string][] = [
   ["big", "Changed ≥ 10 pts"],
 ];
 
-export default function AdminView({ log, sourceUrl }: { log: DayLog[]; sourceUrl: string }) {
+export default function AdminView({ log }: { log: DayLog[] }) {
   const [date, setDate] = useState(log[log.length - 1]?.date);
   const [files, setFiles] = useState<Record<string, Row[]>>({});
   const [filter, setFilter] = useState<Filter>("all");
@@ -117,172 +119,151 @@ export default function AdminView({ log, sourceUrl }: { log: DayLog[]; sourceUrl
     }
   }, [liveCheck, files]);
 
+  const result = !live
+    ? null
+    : "error" in live
+      ? `Source unreachable: ${live.error}`
+      : !liveCheck?.archived
+        ? `Source shows ${liveCheck?.liveDate ? day(liveCheck.liveDate) : "—"}, not yet saved`
+        : !liveCheck.loaded
+          ? "Comparing…"
+          : liveCheck.diffs.length
+            ? `${liveCheck.diffs.length} rows differ from the source`
+            : `Matches the source: ${live.rows.length.toLocaleString()} rows, ${live.citywide}%`;
+
+  const th = "px-3 py-2 font-normal whitespace-nowrap";
+  const bad = !!live && ("error" in live || !!liveCheck?.diffs.length);
   return (
-    <div className="space-y-6">
-      <section className="card overflow-hidden">
-        <div className="flex items-baseline justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">Collection log</h2>
-          <a href="/data/citywide.csv" className="text-xs text-accent hover:underline">
-            citywide.csv
-          </a>
-        </div>
-        <div className="max-h-72 overflow-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-surface text-left text-xs uppercase tracking-wide text-ink-3">
-              <tr className="border-b border-border">
-                <th className="px-4 py-2 font-medium">School day</th>
-                <th className="px-4 py-2 text-right font-medium">Citywide</th>
-                <th className="px-4 py-2 text-right font-medium">Schools</th>
-                <th className="px-4 py-2 text-right font-medium">Reported</th>
-                <th className="px-4 py-2 text-right font-medium">Not submitted</th>
-                <th className="px-4 py-2 text-right font-medium">Last saved (ET)</th>
+    <div className="mt-10 space-y-14">
+      <section className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <button
+          onClick={checkLive}
+          disabled={checking}
+          className="h-10 rounded-md bg-ink px-5 font-medium text-page hover:bg-accent disabled:opacity-50"
+        >
+          {checking ? "Checking…" : "Check source"}
+        </button>
+        {result && (
+          <span className={bad ? "font-medium text-accent" : "text-ink-2"}>
+            <span aria-hidden className="mr-1.5">{bad ? "✕" : liveCheck?.archived && liveCheck.loaded ? "✓" : "·"}</span>
+            {result}
+          </span>
+        )}
+      </section>
+
+      {liveCheck && liveCheck.diffs.length > 0 && (
+        <section className="max-h-72 overflow-auto">
+          <table className="w-full text-sm tabular-nums">
+            <thead className="sticky top-0 bg-page text-left text-ink-3">
+              <tr className="border-b border-ink">
+                <th className={th}>DBN</th>
+                <th className={th}>School</th>
+                <th className={`${th} text-right`}>Saved</th>
+                <th className={`${th} text-right`}>Source</th>
               </tr>
             </thead>
             <tbody>
-              {[...log].reverse().map((d) => (
-                <tr
-                  key={d.date}
-                  onClick={() => setDate(d.date)}
-                  className={`cursor-pointer border-b border-border last:border-0 ${d.date === date ? "bg-page font-medium" : "hover:bg-page"}`}
-                >
-                  <td className="px-4 py-2">{day(d.date)}</td>
-                  <td className="px-4 py-2 text-right">{d.citywide ? `${d.citywide}%` : "—"}</td>
-                  <td className="px-4 py-2 text-right">{d.schools.toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right">{d.reported.toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right">{(d.schools - d.reported).toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right text-ink-2">{et(d.fetchedAt)}</td>
+              {liveCheck.diffs.map((d) => (
+                <tr key={d.dbn} className="border-b border-line">
+                  <td className="px-3 py-1.5 text-ink-2">{d.dbn}</td>
+                  <td className="px-3 py-1.5">{d.name}</td>
+                  <td className="px-3 py-1.5 text-right">{d.stored ?? "—"}</td>
+                  <td className="px-3 py-1.5 text-right">{d.live ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </section>
+      )}
+
+      <section className="overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <thead className="text-left text-ink-3">
+            <tr className="border-b border-ink">
+              <th className={th}>Day</th>
+              <th className={`${th} text-right`}>City</th>
+              <th className={`${th} hidden text-right sm:table-cell`}>Schools</th>
+              <th className={`${th} text-right`}>Not submitted</th>
+              <th className={`${th} hidden text-right sm:table-cell`}>Saved (ET)</th>
+              <th className={`${th} text-right`}>
+                <a href="/data/citywide.csv" className="-my-2 inline-block py-2 hover:text-ink">CSV</a>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...log].reverse().map((d) => (
+              <tr
+                key={d.date}
+                onClick={() => setDate(d.date)}
+                className={`cursor-pointer border-b border-line ${d.date === date ? "bg-hover" : "hover:bg-hover"}`}
+              >
+                <td className="px-3 py-2 whitespace-nowrap">{shortDay(d.date)}</td>
+                <td className="px-3 py-2 text-right">{d.citywide || "—"}</td>
+                <td className="hidden px-3 py-2 text-right sm:table-cell">{d.schools.toLocaleString()}</td>
+                <td className="px-3 py-2 text-right">{(d.schools - d.reported).toLocaleString()}</td>
+                <td className="hidden px-3 py-2 text-right text-ink-2 sm:table-cell">{et(d.fetchedAt)}</td>
+                <td className="px-3 py-2 text-right">
+                  <a href={`/data/days/${d.date}.csv`} onClick={(e) => e.stopPropagation()} className="-my-2 inline-block px-3 py-2 text-ink-2 hover:text-ink" aria-label={`Download ${d.date}.csv`}>
+                    ↓
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
 
-      <section className="card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold">Check against the live DOE page</h2>
-            <p className="text-xs text-ink-3">
-              Fetches{" "}
-              <a href={sourceUrl} className="text-accent hover:underline">
-                the source
-              </a>{" "}
-              now and compares every row with the archive.
-            </p>
-          </div>
-          <button
-            onClick={checkLive}
-            disabled={checking}
-            className="h-9 rounded-lg bg-accent px-4 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {checking ? "Fetching…" : "Run check"}
-          </button>
-        </div>
-        {live && "error" in live && <p className="mt-3 text-sm text-red-600">Couldn’t read the source: {live.error}</p>}
-        {live && !("error" in live) && liveCheck && (
-          <div className="mt-4 space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {[
-                ["Source shows", liveCheck.liveDate ? day(liveCheck.liveDate) : "—"],
-                ["Source citywide", live.citywide ? `${live.citywide}%` : "—"],
-                ["Source rows", live.rows.length.toLocaleString()],
-                [
-                  "Result",
-                  !liveCheck.archived ? "Not archived yet" : !liveCheck.loaded ? "Loading…" : liveCheck.diffs.length ? `${liveCheck.diffs.length} differences` : "Exact match",
-                ],
-              ].map(([k, v]) => (
-                <div key={k} className="rounded-lg bg-page px-3 py-2">
-                  <div className="text-[11px] uppercase tracking-wide text-ink-3">{k}</div>
-                  <div className="font-semibold">{v}</div>
-                </div>
-              ))}
-            </div>
-            {!liveCheck.archived && <p className="text-ink-2">The next hourly run will save this day.</p>}
-            {liveCheck.diffs.length > 0 && (
-              <div className="max-h-64 overflow-auto rounded-lg border border-border">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-surface text-left text-xs uppercase tracking-wide text-ink-3">
-                    <tr className="border-b border-border">
-                      <th className="px-3 py-2 font-medium">DBN</th>
-                      <th className="px-3 py-2 font-medium">School</th>
-                      <th className="px-3 py-2 text-right font-medium">Archive</th>
-                      <th className="px-3 py-2 text-right font-medium">Live</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {liveCheck.diffs.map((d) => (
-                      <tr key={d.dbn} className="border-b border-border last:border-0">
-                        <td className="px-3 py-1.5 font-mono text-xs">{d.dbn}</td>
-                        <td className="px-3 py-1.5">{d.name}</td>
-                        <td className="px-3 py-1.5 text-right font-mono">{d.stored ?? "absent"}</td>
-                        <td className="px-3 py-1.5 text-right font-mono">{d.live ?? "absent"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      <section className="card overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
-          <h2 className="mr-auto text-sm font-semibold">
-            Raw rows · {date ? day(date) : "—"}
-            {prevDate && <span className="font-normal text-ink-3"> · compared with {day(prevDate)}</span>}
-          </h2>
-          <select className="field" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
-            {FILTERS.map(([k, label]) => (
-              <option key={k} value={k} disabled={k !== "all" && k !== "ns" && !prevDate}>
+      <section>
+        <div className="flex flex-wrap items-center gap-2 border-b-2 border-ink pb-3">
+          <h2 className="mr-auto w-full font-display text-2xl sm:w-auto">{date ? day(date) : "—"}</h2>
+          <select className="field" value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="Rows">
+            {FILTERS.filter(([k]) => k === "all" || k === "ns" || prevDate).map(([k, label]) => (
+              <option key={k} value={k}>
                 {label}
                 {k !== "all" ? ` (${counts[k]})` : ""}
               </option>
             ))}
           </select>
-          <input className="field w-48" placeholder="Search DBN or name…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <a href={`/data/days/${date}.csv`} className="text-xs text-accent hover:underline">
-            {date}.csv
-          </a>
+          <input className="field min-w-0 flex-1 sm:w-56 sm:flex-none" placeholder="DBN or name" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search rows" />
         </div>
         <div className="max-h-[70vh] overflow-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-surface text-left text-xs uppercase tracking-wide text-ink-3">
-              <tr className="border-b border-border">
-                <th className="px-3 py-2 text-right font-medium">#</th>
-                <th className="px-3 py-2 font-medium">DBN</th>
-                <th className="px-3 py-2 font-medium">School name (as published)</th>
-                <th className="px-3 py-2 text-right font-medium">%ATTD</th>
-                <th className="px-3 py-2 text-right font-medium">Prev. day</th>
-                <th className="px-3 py-2 text-right font-medium">Δ</th>
-                <th className="px-3 py-2 font-medium">Flag</th>
+          <table className="w-full text-sm tabular-nums">
+            <thead className="sticky top-0 bg-page text-left text-ink-3">
+              <tr className="border-b border-line">
+                <th className={th}>DBN</th>
+                <th className={th}>School</th>
+                <th className={`${th} text-right`}>Attendance</th>
+                {prevDate && <th className={`${th} hidden text-right sm:table-cell`}>{shortDay(prevDate)}</th>}
+                {prevDate && <th className={`${th} text-right`}>Δ</th>}
               </tr>
             </thead>
             <tbody>
-              {shown.map((r, i) => (
-                <tr key={r.dbn} className="border-b border-border last:border-0 hover:bg-page">
-                  <td className="px-3 py-1.5 text-right text-xs text-ink-3">{i + 1}</td>
-                  <td className="px-3 py-1.5 font-mono text-xs">{r.dbn}</td>
-                  <td className="px-3 py-1.5">{r.name}</td>
-                  <td className="px-3 py-1.5 text-right font-mono">{r.missing ? "" : r.pct || "NS"}</td>
-                  <td className="px-3 py-1.5 text-right font-mono text-ink-2">{prevDate ? (r.prevPct === null ? "" : r.prevPct || "NS") : ""}</td>
-                  <td className="px-3 py-1.5 text-right font-mono text-ink-2">
-                    {r.delta === null ? "" : `${r.delta > 0 ? "+" : ""}${r.delta.toFixed(2)}`}
+              {shown.map((r) => (
+                <tr key={r.dbn} className="border-b border-line hover:bg-hover">
+                  <td className="px-3 py-1.5 text-ink-2">{r.dbn}</td>
+                  <td className="px-3 py-1.5">
+                    {r.name}
+                    {r.isNew && <span className="ml-2 rounded bg-hover px-1.5 text-xs text-ink-2">new</span>}
+                    {r.missing && <span className="ml-2 rounded bg-hover px-1.5 text-xs text-ink-2">gone</span>}
                   </td>
-                  <td className="px-3 py-1.5 text-xs">
-                    {r.missing && <span className="rounded bg-page px-1.5 py-0.5 text-ink-2">missing</span>}
-                    {r.isNew && <span className="rounded bg-page px-1.5 py-0.5 text-ink-2">new</span>}
-                    {!r.missing && r.pct === "" && <span className="rounded bg-page px-1.5 py-0.5 text-ink-2">not submitted</span>}
-                  </td>
+                  <td className="px-3 py-1.5 text-right">{r.missing ? "" : r.pct || <span className="text-ink-3">NS</span>}</td>
+                  {prevDate && <td className="hidden px-3 py-1.5 text-right text-ink-2 sm:table-cell">{r.prevPct === null ? "" : r.prevPct || "NS"}</td>}
+                  {prevDate && (
+                    <td className={`px-3 py-1.5 text-right ${r.delta !== null && Math.abs(r.delta) >= 10 ? "font-semibold text-accent" : "text-ink-2"}`}>
+                      {r.delta === null ? "" : `${r.delta > 0 ? "+" : "−"}${Math.abs(r.delta).toFixed(2)}`}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
-          {!files[date] && <p className="p-4 text-sm text-ink-3">Loading…</p>}
+          {!files[date] && <p className="py-4 text-ink-3">…</p>}
         </div>
-        <div className="border-t border-border px-4 py-2 text-xs text-ink-3">
-          {shown.length.toLocaleString()} of {enriched.length.toLocaleString()} rows
-        </div>
+        {shown.length !== enriched.length && (
+          <p className="mt-3 text-sm text-ink-3 tabular-nums">
+            {shown.length.toLocaleString()} / {enriched.length.toLocaleString()}
+          </p>
+        )}
       </section>
     </div>
   );

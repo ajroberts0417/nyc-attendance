@@ -1,105 +1,92 @@
 @import "tailwindcss";
 
+/* Fractal Accelerator brand: paper, burgundy ink, Fraunces + Inter. */
 :root {
   color-scheme: light;
-  --page: #f4f5f7;
-  --surface: #ffffff;
-  --border: #e3e5e8;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --ink-3: #8a8984;
-  --grid: #eceef1;
-  --accent: #2a78d6;
-  --accent-ink: #1c5cab;
-  --hero-from: #2a78d6;
-  --hero-to: #1c5cab;
-  --ref: #9a9993;
-  /* sequential blue, light → dark */
-  --seq-1: #cde2fb;
-  --seq-2: #9ec5f4;
-  --seq-3: #6da7ec;
-  --seq-4: #3987e5;
-  --seq-5: #256abf;
-  --seq-6: #184f95;
-  --seq-7: #0d366b;
-  --nodata: #e8e8e5;
+  --page: #f1f0ec;
+  --ink: #641e28;
+  --ink-2: #80484f; /* 6.2:1 on paper */
+  --ink-3: #8e5d63; /* 4.7:1 on paper */
+  --line: #641e281a;
+  --hover: #641e280f;
+  --accent: #8c2d37;
+  /* Attendance ramp, one hue: lighter = higher, darker = lower (where attention belongs). */
+  --seq-1: #fcebed;
+  --seq-2: #f2c9ce;
+  --seq-3: #e3a1a9;
+  --seq-4: #cc7680;
+  --seq-5: #aa4650;
+  --seq-6: #8c2d37;
+  --seq-7: #641e28;
+  --nodata: #641e2814;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --page: #111110;
-    --surface: #1a1a19;
-    --border: #2c2c2a;
-    --ink: #f0efec;
-    --ink-2: #c3c2b7;
-    --ink-3: #8f8e86;
-    --grid: #262624;
-    --accent: #5598e7;
-    --accent-ink: #86b6ef;
-    --hero-from: #1c5cab;
-    --hero-to: #104281;
-    --ref: #8f8e86;
-    --seq-1: #0d366b;
-    --seq-2: #104281;
-    --seq-3: #184f95;
-    --seq-4: #256abf;
-    --seq-5: #3987e5;
-    --seq-6: #6da7ec;
-    --seq-7: #b7d3f6;
-    --nodata: #2a2a28;
+    --page: #1c1416;
+    --ink: #f1e4e2;
+    --ink-2: #c6bab9;
+    --ink-3: #9c9190;
+    --line: #f1e4e21f;
+    --hover: #f1e4e214;
+    --accent: #ec98a1;
+    --seq-1: #3a2427;
+    --seq-2: #5a2c33;
+    --seq-3: #7d3640;
+    --seq-4: #a3454f;
+    --seq-5: #c9636d;
+    --seq-6: #e58e97;
+    --seq-7: #fcd3d8;
+    --nodata: #f1e4e214;
   }
 }
 
 @theme inline {
   --color-page: var(--page);
-  --color-surface: var(--surface);
-  --color-border: var(--border);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-hover: var(--hover);
   --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-fraunces);
 }
 
 body {
   background: var(--page);
   color: var(--ink);
-  font-feature-settings: "tnum";
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.field {
-  height: 36px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: 8px;
-  padding: 0 10px;
-  font-size: 14px;
-}
-.field:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  font-feature-settings: "tnum", "cv11";
 }
 
 .tooltip {
   position: absolute;
   pointer-events: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--page);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
   z-index: 10;
+}
+
+.field {
+  height: 40px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }

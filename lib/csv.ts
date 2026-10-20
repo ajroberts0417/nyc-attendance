@@ -1,7 +1,7 @@
 // Minimal RFC 4180 reader for the archive files (header row dropped).
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
-  for (const line of text.trim().split("\n").slice(1)) {
+  for (const line of text.trim().split(/\r?\n/).slice(1)) {
     const cells: string[] = [];
     let cur = "";
     let quoted = false;
