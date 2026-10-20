@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { cacheLife } from "next/cache";
+import { parseCsv } from "./csv";
 
 const DATA = join(process.cwd(), "data");
 
@@ -32,32 +33,6 @@ export const BOROUGHS: Record<string, string> = {
 
 export const boroughOf = (dbn: string) => BOROUGHS[dbn[2]] ?? "Other";
 export const districtOf = (dbn: string) => dbn.slice(0, 2);
-
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  for (const line of text.trim().split("\n").slice(1)) {
-    const cells: string[] = [];
-    let cur = "";
-    let quoted = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (quoted) {
-        if (c === '"' && line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else if (c === '"') quoted = false;
-        else cur += c;
-      } else if (c === '"') quoted = true;
-      else if (c === ",") {
-        cells.push(cur);
-        cur = "";
-      } else cur += c;
-    }
-    cells.push(cur);
-    rows.push(cells);
-  }
-  return rows;
-}
 
 const num = (s: string) => (s === "" ? null : Number(s));
 

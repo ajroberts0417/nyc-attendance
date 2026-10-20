@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Explorer from "@/components/Explorer";
 import TrendChart from "@/components/TrendChart";
 import { fmtDate, fmtPct, getDay, getDays, getDistrictShapes, getSchools, mean } from "@/lib/data";
@@ -81,7 +82,10 @@ export default async function Home() {
       />
 
       <footer className="mt-10 text-xs text-ink-3">
-        Data: NYC Public Schools, preliminary figures as of 4 pm. Collected hourly.
+        Data: NYC Public Schools, preliminary figures as of 4 pm. Collected hourly. ·{" "}
+        <Link href="/admin" className="hover:text-ink-2 hover:underline">
+          Source data
+        </Link>
       </footer>
     </main>
   );
